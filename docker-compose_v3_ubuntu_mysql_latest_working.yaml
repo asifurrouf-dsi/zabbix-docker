@@ -1,12 +1,10 @@
 version: '3.5'
 services:
  zabbix-server:
-  image: zabbix/zabbix-server-mysql:alpine-4.4-latest
+  image: zabbix/zabbix-server-mysql:ubuntu-4.4-latest
   ports:
    - "10051:10051"
   volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro 
    - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
    - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
    - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
@@ -47,8 +45,8 @@ services:
      aliases:
       - zabbix-server
       - zabbix-server-mysql
-      - zabbix-server-alpine-mysql
-      - zabbix-server-mysql-alpine
+      - zabbix-server-ubuntu-mysql
+      - zabbix-server-mysql-ubuntu
    zbx_net_frontend:
 #  devices:
 #   - "/dev/ttyUSB0:/dev/ttyUSB0"
@@ -60,13 +58,113 @@ services:
    - net.ipv4.conf.all.send_redirects=0
   labels:
    com.zabbix.description: "Zabbix server with MySQL database support"
-   com.zabbix.company: "Zabbix LLC"
+   com.zabbix.company: "Zabbix SIA"
    com.zabbix.component: "zabbix-server"
    com.zabbix.dbtype: "mysql"
-   com.zabbix.os: "alpine"
+   com.zabbix.os: "ubuntu"
+
+ zabbix-proxy-sqlite3:
+  image: zabbix/zabbix-proxy-sqlite3:ubuntu-4.4-latest
+  ports:
+   - "10061:10051"
+  volumes:
+   - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
+   - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+   - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+   - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+   - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
+   - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+  links:
+   - zabbix-server:zabbix-server
+   - zabbix-java-gateway:zabbix-java-gateway
+  ulimits:
+   nproc: 65535
+   nofile:
+    soft: 20000
+    hard: 40000
+  deploy:
+   resources:
+    limits:
+      cpus: '0.70'
+      memory: 512M
+    reservations:
+      cpus: '0.3'
+      memory: 256M
+  env_file:
+   - .env_prx
+   - .env_prx_sqlite3
+  user: root
+  depends_on:
+   - zabbix-java-gateway
+   - zabbix-snmptraps
+  networks:
+   zbx_net_backend:
+    aliases:
+     - zabbix-proxy-sqlite3
+     - zabbix-proxy-ubuntu-sqlite3
+     - zabbix-proxy-sqlite3-ubuntu
+   zbx_net_frontend:
+  stop_grace_period: 30s
+  labels:
+   com.zabbix.description: "Zabbix proxy with SQLite3 database support"
+   com.zabbix.company: "Zabbix SIA"
+   com.zabbix.component: "zabbix-proxy"
+   com.zabbix.dbtype: "sqlite3"
+   com.zabbix.os: "ubuntu"
+
+ zabbix-proxy-mysql:
+  image: zabbix/zabbix-proxy-mysql:ubuntu-4.4-latest
+  ports:
+   - "10071:10051"
+  volumes:
+   - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
+   - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+   - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+   - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+   - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
+   - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+  links:
+   - zabbix-server:zabbix-server
+   - zabbix-java-gateway:zabbix-java-gateway
+  ulimits:
+   nproc: 65535
+   nofile:
+    soft: 20000
+    hard: 40000
+  deploy:
+   resources:
+    limits:
+      cpus: '0.70'
+      memory: 512M
+    reservations:
+      cpus: '0.3'
+      memory: 256M
+  env_file:
+   - .env_db_mysql_proxy
+   - .env_prx
+   - .env_prx_mysql
+  user: root
+  depends_on:
+   - mysql-server
+   - zabbix-java-gateway
+   - zabbix-snmptraps
+  networks:
+   zbx_net_backend:
+    aliases:
+     - zabbix-proxy-mysql
+     - zabbix-proxy-ubuntu-mysql
+     - zabbix-proxy-mysql-ubuntu
+   zbx_net_frontend:
+  stop_grace_period: 30s
+  labels:
+   com.zabbix.description: "Zabbix proxy with MySQL database support"
+   com.zabbix.company: "Zabbix SIA"
+   com.zabbix.component: "zabbix-proxy"
+   com.zabbix.dbtype: "mysql"
+   com.zabbix.os: "ubuntu"
 
  zabbix-web-apache-mysql:
-  image: zabbix/zabbix-web-apache-mysql:alpine-4.4-latest
+  image: zabbix/zabbix-web-apache-mysql:ubuntu-4.4-latest
   ports:
    - "80:80"
    - "443:443"
@@ -74,8 +172,6 @@ services:
    - mysql-server:mysql-server
    - zabbix-server:zabbix-server
   volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
    - ./zbx_env/etc/ssl/apache2:/etc/ssl/apache2:ro
   deploy:
    resources:
@@ -105,22 +201,22 @@ services:
    zbx_net_backend:
     aliases:
      - zabbix-web-apache-mysql
-     - zabbix-web-apache-alpine-mysql
-     - zabbix-web-apache-mysql-alpine
+     - zabbix-web-apache-ubuntu-mysql
+     - zabbix-web-apache-mysql-ubuntu
    zbx_net_frontend:
   stop_grace_period: 10s
   sysctls:
    - net.core.somaxconn=65535
   labels:
    com.zabbix.description: "Zabbix frontend on Apache web-server with MySQL database support"
-   com.zabbix.company: "Zabbix LLC"
+   com.zabbix.company: "Zabbix SIA"
    com.zabbix.component: "zabbix-frontend"
    com.zabbix.webserver: "apache2"
    com.zabbix.dbtype: "mysql"
-   com.zabbix.os: "alpine"
+   com.zabbix.os: "ubuntu"
 
  zabbix-web-nginx-mysql:
-  image: zabbix/zabbix-web-nginx-mysql:alpine-4.4-latest
+  image: zabbix/zabbix-web-nginx-mysql:ubuntu-4.4-latest
   ports:
    - "8081:80"
    - "8443:443"
@@ -128,8 +224,6 @@ services:
    - mysql-server:mysql-server
    - zabbix-server:zabbix-server
   volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
    - ./zbx_env/etc/ssl/nginx:/etc/ssl/nginx:ro
   deploy:
    resources:
@@ -159,27 +253,25 @@ services:
    zbx_net_backend:
     aliases:
      - zabbix-web-nginx-mysql
-     - zabbix-web-nginx-alpine-mysql
-     - zabbix-web-nginx-mysql-alpine
+     - zabbix-web-nginx-ubuntu-mysql
+     - zabbix-web-nginx-mysql-ubuntu
    zbx_net_frontend:
   stop_grace_period: 10s
   sysctls:
    - net.core.somaxconn=65535
   labels:
    com.zabbix.description: "Zabbix frontend on Nginx web-server with MySQL database support"
-   com.zabbix.company: "Zabbix LLC"
+   com.zabbix.company: "Zabbix SIA"
    com.zabbix.component: "zabbix-frontend"
    com.zabbix.webserver: "nginx"
    com.zabbix.dbtype: "mysql"
-   com.zabbix.os: "alpine"
+   com.zabbix.os: "ubuntu"
 
  zabbix-agent:
-  image: zabbix/zabbix-agent:alpine-4.4-latest
+  image: zabbix/zabbix-agent:ubuntu-4.4-latest
   ports:
    - "10050:10050"
   volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
    - ./zbx_env/etc/zabbix/zabbix_agentd.d:/etc/zabbix/zabbix_agentd.d:ro
    - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
    - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
@@ -205,16 +297,16 @@ services:
     aliases:
      - zabbix-agent
      - zabbix-agent-passive
-     - zabbix-agent-alpine
+     - zabbix-agent-ubuntu
   stop_grace_period: 5s
   labels:
    com.zabbix.description: "Zabbix agent"
-   com.zabbix.company: "Zabbix LLC"
+   com.zabbix.company: "Zabbix SIA"
    com.zabbix.component: "zabbix-agentd"
-   com.zabbix.os: "alpine"
+   com.zabbix.os: "ubuntu"
 
  zabbix-java-gateway:
-  image: zabbix/zabbix-java-gateway:alpine-4.4-latest
+  image: zabbix/zabbix-java-gateway:ubuntu-4.4-latest
   ports:
    - "10052:10052"
   deploy:
@@ -232,16 +324,16 @@ services:
    zbx_net_backend:
     aliases:
      - zabbix-java-gateway
-     - zabbix-java-gateway-alpine
+     - zabbix-java-gateway-ubuntu
   stop_grace_period: 5s
   labels:
    com.zabbix.description: "Zabbix Java Gateway"
-   com.zabbix.company: "Zabbix LLC"
+   com.zabbix.company: "Zabbix SIA"
    com.zabbix.component: "java-gateway"
-   com.zabbix.os: "alpine"
+   com.zabbix.os: "ubuntu"
 
  zabbix-snmptraps:
-  image: zabbix/zabbix-snmptraps:alpine-4.4-latest
+  image: zabbix/zabbix-snmptraps:ubuntu-4.4-latest
   ports:
    - "162:162/udp"
   volumes:
@@ -263,7 +355,7 @@ services:
   stop_grace_period: 5s
   labels:
    com.zabbix.description: "Zabbix snmptraps"
-   com.zabbix.company: "Zabbix LLC"
+   com.zabbix.company: "Zabbix SIA"
    com.zabbix.component: "snmptraps"
    com.zabbix.os: "ubuntu"
 
