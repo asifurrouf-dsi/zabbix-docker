@@ -224,8 +224,6 @@ services:
    - mysql-server:mysql-server
    - zabbix-server:zabbix-server
   volumes:
-   - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
    - ./zbx_env/etc/ssl/nginx:/etc/ssl/nginx:ro
   deploy:
    resources:
